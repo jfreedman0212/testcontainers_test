@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 testcontainers = "0.14.0"
+postgres = "0.19.3"
+refinery = { version = "0.8.4", features = ["postgres"] }
