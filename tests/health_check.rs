@@ -4,7 +4,7 @@ use testcontainers_test::run;
 use tokio;
 
 #[tokio::test]
-async fn greet() {
+async fn health_check() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let address = listener.local_addr().unwrap();
     let _ = tokio::spawn(async move {
