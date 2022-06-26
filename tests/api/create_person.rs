@@ -1,15 +1,11 @@
+use crate::helpers::{spawn_test_app, TestApp};
 use reqwest::Client;
-use std::net::TcpListener;
-use testcontainers_test::{run, Person, PersonInput};
+use testcontainers_test::{Person, PersonInput};
 use tokio;
 
 #[tokio::test]
 async fn create_person() {
-    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-    let address = listener.local_addr().unwrap();
-    let _ = tokio::spawn(async move {
-        run(listener).unwrap().await.unwrap();
-    });
+    let TestApp { address } = spawn_test_app().await;
     let person_input = PersonInput::new("Josh");
     let client = Client::new();
     let post_response = client

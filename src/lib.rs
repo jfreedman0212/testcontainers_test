@@ -1,6 +1,10 @@
+pub mod config;
+
 use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, Responder};
+use config::ApplicationConfiguration;
+use deadpool_postgres::{Config, Runtime};
 use serde::{Deserialize, Serialize};
-use std::net::TcpListener;
+use tokio_postgres::NoTls;
 
 #[derive(Deserialize, Serialize)]
 pub struct PersonInput {
@@ -61,12 +65,21 @@ async fn get_person(id: web::Path<u64>) -> impl Responder {
     })
 }
 
-pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
-    let server = HttpServer::new(|| {
+pub fn run(app_config: ApplicationConfiguration) -> Result<Server, std::io::Error> {
+    let ApplicationConfiguration { listener, database } = app_config;
+    let mut cfg = Config::new();
+    cfg.dbname = Some(database.name);
+    cfg.host = Some(database.host);
+    cfg.port = Some(database.port);
+    cfg.user = Some(database.username);
+    cfg.password = Some(database.password);
+    let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
+    let server = HttpServer::new(move || {
         App::new()
             .service(greet)
             .service(create_person)
             .service(get_person)
+            .app_data(pool.clone())
     })
     .listen(listener)?
     .run();

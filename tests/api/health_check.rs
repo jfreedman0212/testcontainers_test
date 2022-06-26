@@ -1,15 +1,10 @@
+use crate::helpers::{spawn_test_app, TestApp};
 use reqwest;
-use std::net::TcpListener;
-use testcontainers_test::run;
 use tokio;
 
 #[tokio::test]
 async fn health_check() {
-    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-    let address = listener.local_addr().unwrap();
-    let _ = tokio::spawn(async move {
-        run(listener).unwrap().await.unwrap();
-    });
+    let TestApp { address } = spawn_test_app().await;
     let response = reqwest::get(format!("http://{}/health_check", address))
         .await
         .unwrap();
