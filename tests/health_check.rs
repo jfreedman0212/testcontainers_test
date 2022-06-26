@@ -7,14 +7,15 @@ use tokio;
 async fn greet() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let address = listener.local_addr().unwrap();
-    let _ = tokio::spawn(async {
+    let _ = tokio::spawn(async move {
         run(listener).unwrap().await.unwrap();
     });
-    let response = reqwest::get(format!("http://{}/hello/josh", address))
-        .await
-        .unwrap()
-        .text()
+    let response = reqwest::get(format!("http://{}/health_check", address))
         .await
         .unwrap();
-    assert_eq!(response, "Hello josh!");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "Response was not successful"
+    );
 }
