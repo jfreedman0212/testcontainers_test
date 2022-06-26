@@ -1,5 +1,4 @@
 CREATE TABLE person (
     id      SERIAL PRIMARY KEY,
-    name    TEXT NOT NULL,
-    data    BYTEA
+    name    TEXT NOT NULL
 )
