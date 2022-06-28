@@ -1,3 +1,8 @@
+# The Rust target directory, which contains compiled output
+# and anything else Cargo creates and manages.
 /target
+# File that MacOS uses with Finder. Never want to commit this.
 .DS_Store
+# Any SQLite databases that get created. The application will create a DB file,
+# but so will the integration tests. We don't want to commit these.
 *.sqlite3
