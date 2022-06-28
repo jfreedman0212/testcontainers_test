@@ -1,11 +1,8 @@
 use std::net::TcpListener;
+use deadpool_sqlite::Config;
 
 pub struct DatabaseConfiguration {
-    pub name: String,
-    pub host: String,
-    pub port: u16,
-    pub username: String,
-    pub password: String,
+    pub config: Config
 }
 
 pub struct ApplicationConfiguration {

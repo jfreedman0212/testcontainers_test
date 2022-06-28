@@ -1,4 +1,5 @@
 use std::net::TcpListener;
+use deadpool_sqlite::Config;
 use testcontainers_test::{
     config::{ApplicationConfiguration, DatabaseConfiguration},
     run,
@@ -11,14 +12,10 @@ async fn main() -> std::io::Result<()> {
     let app_config = ApplicationConfiguration {
         listener,
         database: DatabaseConfiguration {
-            name: String::from("test_database"),
-            host: String::from("127.0.0.1"),
-            port: 5432,
-            username: String::from("dummy"),
-            password: String::from("qwe123QWE!@#"),
+            config: Config::new("app.sqlite3"),
         },
     };
-    match run(app_config) {
+    match run(app_config).await {
         Ok(server) => {
             server.await?;
             Ok(())
