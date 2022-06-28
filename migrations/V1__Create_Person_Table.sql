@@ -1,4 +1,4 @@
 CREATE TABLE person (
-    id      SERIAL PRIMARY KEY,
+    id      INTEGER PRIMARY KEY,
     name    TEXT NOT NULL
 )

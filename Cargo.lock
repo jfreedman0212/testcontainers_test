@@ -1392,7 +1392,6 @@ dependencies = [
  "deadpool-sqlite",
  "refinery",
  "reqwest",
- "rusqlite",
  "serde",
  "tokio",
  "uuid",

@@ -1,10 +1,9 @@
-use std::net::TcpListener;
 use deadpool_sqlite::Config;
+use std::net::TcpListener;
 use testcontainers_test::{
     config::{ApplicationConfiguration, DatabaseConfiguration},
     run,
 };
-use tokio;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

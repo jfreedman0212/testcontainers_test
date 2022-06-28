@@ -17,7 +17,8 @@ async fn create_person() {
     assert_eq!(
         post_response.status().as_u16(),
         200,
-        "Response was not successful"
+        "Unsuccessful response: {:?}",
+        post_response.text().await.unwrap()
     );
     assert_eq!(
         post_response.headers().get("content-type").unwrap(),
@@ -39,12 +40,13 @@ async fn create_person() {
     assert_eq!(
         get_response.status().as_u16(),
         200,
-        "Response was not successful"
+        "Unsuccessful response: {:?}",
+        get_response.text().await.unwrap()
     );
     assert_eq!(
         get_response.headers().get("content-type").unwrap(),
         "application/json",
-        "Content-Type is be application/json"
+        "Content-Type is not application/json"
     );
     let retrieved_person = get_response.json::<Person>().await.unwrap();
     assert_eq!(newly_created_person, retrieved_person);

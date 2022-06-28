@@ -1,5 +1,4 @@
-use deadpool_sqlite::Config;
-use rusqlite;
+use deadpool_sqlite::{rusqlite, Config};
 use std::net::{SocketAddr, TcpListener};
 use testcontainers_test::{
     config::{ApplicationConfiguration, DatabaseConfiguration},
@@ -30,7 +29,8 @@ pub async fn spawn_test_app() -> TestApp {
         embedded::migrations::runner()
             .run(&mut rusqlite::Connection::open(db_path).unwrap())
             .unwrap();
-    }).await;
+    })
+    .await;
     let _ = tokio::spawn(async move {
         run(app_config).await.unwrap().await.unwrap();
     });
