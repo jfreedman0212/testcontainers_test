@@ -51,3 +51,21 @@ async fn create_person() {
     let retrieved_person = get_response.json::<Person>().await.unwrap();
     assert_eq!(newly_created_person, retrieved_person);
 }
+
+/// This test mostly exists to assert that each connection
+#[tokio::test]
+async fn get_person_expect_empty() {
+    let TestApp { address } = spawn_test_app().await;
+    let client = Client::new();
+    let get_response = client
+        .get(format!("http://{}/people/1", address))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        get_response.status().as_u16(),
+        404,
+        "Didn't get a 404, instead got response: {:?}",
+        get_response.text().await.unwrap()
+    );
+}

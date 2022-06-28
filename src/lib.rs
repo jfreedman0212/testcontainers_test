@@ -2,7 +2,7 @@ pub mod config;
 
 use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, Responder};
 use config::ApplicationConfiguration;
-use deadpool_sqlite::{rusqlite::OptionalExtension, Pool, Runtime};
+use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -96,14 +96,13 @@ async fn get_person(id: web::Path<i64>, pool: web::Data<Pool>) -> impl Responder
 }
 
 pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, std::io::Error> {
-    let ApplicationConfiguration { listener, database } = app_config;
-    let pool: Pool = database.config.create_pool(Runtime::Tokio1).unwrap(); // TODO: map the error to something
+    let ApplicationConfiguration { listener, db_pool } = app_config;
     let server = HttpServer::new(move || {
         App::new()
             .service(greet)
             .service(create_person)
             .service(get_person)
-            .app_data(web::Data::new(pool.clone()))
+            .app_data(web::Data::new(db_pool.clone()))
     })
     .listen(listener)?
     .run();
