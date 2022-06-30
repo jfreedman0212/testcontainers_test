@@ -69,7 +69,7 @@ async fn create_person(person: web::Json<PersonInput>, pool: web::Data<Pool>) ->
 #[get("/people/{id}")]
 async fn get_person(id: web::Path<i64>, pool: web::Data<Pool>) -> impl Responder {
     let pooled_conn = pool.get().await.unwrap(); // TODO: do not unwrap!
-    let cloned_id = id.clone();
+    let cloned_id = *id;
     let option = pooled_conn
         .interact(move |conn| {
             let mut statement = conn
@@ -95,8 +95,20 @@ async fn get_person(id: web::Path<i64>, pool: web::Data<Pool>) -> impl Responder
     }
 }
 
+mod embedded {
+    use refinery::embed_migrations;
+    embed_migrations!("./migrations");
+}
+
 pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, std::io::Error> {
     let ApplicationConfiguration { listener, db_pool } = app_config;
+    let migration_conn = db_pool.get().await.unwrap();
+    migration_conn
+        .interact(|conn| {
+            embedded::migrations::runner().run(conn).unwrap();
+        })
+        .await
+        .unwrap();
     let server = HttpServer::new(move || {
         App::new()
             .service(greet)
