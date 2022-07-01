@@ -4,6 +4,7 @@ use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer
 use config::ApplicationConfiguration;
 use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
 use serde::{Deserialize, Serialize};
+use snafu::{prelude::*, Whatever};
 
 #[derive(Deserialize, Serialize)]
 pub struct PersonInput {
@@ -100,23 +101,35 @@ mod embedded {
     embed_migrations!("./migrations");
 }
 
-pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, std::io::Error> {
+pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whatever> {
     let ApplicationConfiguration { listener, db_pool } = app_config;
-    let migration_conn = db_pool.get().await.unwrap();
+    let migration_conn = db_pool.get().await.with_whatever_context(|error| {
+        format!(
+            "Encountered error getting the migration connection from the pool: {:?}",
+            error
+        )
+    })?;
     migration_conn
         .interact(|conn| {
+            // it's okay to panic in here because `interact` will catch it?
+            // otherwise, we want to propagate errors through Result
             embedded::migrations::runner().run(conn).unwrap();
         })
         .await
-        .unwrap();
-    let server = HttpServer::new(move || {
+        .with_whatever_context(|error| {
+            format!(
+                "Encountered error running the database migration: {:?}",
+                error
+            )
+        })?;
+    Ok(HttpServer::new(move || {
         App::new()
             .service(greet)
             .service(create_person)
             .service(get_person)
             .app_data(web::Data::new(db_pool.clone()))
     })
-    .listen(listener)?
-    .run();
-    Ok(server)
+    .listen(listener)
+    .with_whatever_context(|error| format!("Encountered error running `listen`: {:?}", error))?
+    .run())
 }

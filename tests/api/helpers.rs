@@ -14,7 +14,8 @@ pub async fn spawn_test_app() -> TestApp {
         .unwrap();
     let app_config = ApplicationConfiguration { listener, db_pool };
     let _ = tokio::spawn(async move {
-        run(app_config).await.unwrap().await.unwrap();
+        let server = run(app_config).await.unwrap();
+        server.await.unwrap();
     });
     TestApp { address }
 }
