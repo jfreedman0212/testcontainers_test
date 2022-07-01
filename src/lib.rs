@@ -51,6 +51,7 @@ impl ResponseError for ServerError {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Snafu)]
 enum InnerError {
     #[snafu(display("Failed to get a connection from the connection pool"))]
