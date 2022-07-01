@@ -1,8 +1,8 @@
 pub mod config;
 
-use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, ResponseError};
 use config::ApplicationConfiguration;
-use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
+use deadpool_sqlite::{rusqlite::OptionalExtension, InteractError, Pool, PoolError};
 use serde::{Deserialize, Serialize};
 use snafu::{prelude::*, Whatever};
 
@@ -40,9 +40,25 @@ impl Person {
     }
 }
 
-#[derive(Serialize)]
-struct Error {
-    message: String,
+#[derive(Debug, Snafu)]
+struct ServerError(InnerError);
+
+impl ResponseError for ServerError {
+    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        // TODO: put more information here, such as some sort of Trace ID
+        //       so I can look in the logs using that Trace ID later.
+        HttpResponse::new(self.status_code())
+    }
+}
+
+#[derive(Debug, Snafu)]
+enum InnerError {
+    #[snafu(display("Failed to get a connection from the connection pool"))]
+    DatabasePoolError { source: PoolError },
+    #[snafu(display("Failed while connecting and running queries to the database"))]
+    DatabaseConnectionError,
+    #[snafu(display("Failed while running interact"))]
+    DatabaseInteractError { source: InteractError },
 }
 
 #[get("/health_check")]
@@ -51,49 +67,53 @@ async fn greet() -> HttpResponse {
 }
 
 #[post("/people")]
-async fn create_person(person: web::Json<PersonInput>, pool: web::Data<Pool>) -> impl Responder {
-    let pooled_conn = pool.get().await.unwrap(); // TODO: do not unwrap!
+async fn create_person(
+    person: web::Json<PersonInput>,
+    pool: web::Data<Pool>,
+) -> Result<web::Json<Person>, ServerError> {
+    let pooled_conn = pool.get().await.context(DatabasePoolSnafu)?;
     let new_person = pooled_conn
         .interact(move |conn| {
-            let _ = conn.execute("INSERT INTO person (name) VALUES (?1)", [&person.name]);
-            let last_id = conn.last_insert_rowid();
-            Person {
-                id: last_id,
-                name: person.name.clone(),
-            }
+            conn.execute("INSERT INTO person (name) VALUES (?1)", [&person.name])
+                .map(|_| {
+                    let last_id = conn.last_insert_rowid();
+                    Person {
+                        id: last_id,
+                        name: person.name.clone(),
+                    }
+                })
         })
         .await
-        .unwrap(); // TODO: do not unwrap!
-    web::Json(new_person)
+        .context(DatabaseInteractSnafu)?
+        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
+    Ok(web::Json(new_person))
 }
 
 #[get("/people/{id}")]
-async fn get_person(id: web::Path<i64>, pool: web::Data<Pool>) -> impl Responder {
-    let pooled_conn = pool.get().await.unwrap(); // TODO: do not unwrap!
+async fn get_person(
+    id: web::Path<i64>,
+    pool: web::Data<Pool>,
+) -> Result<Option<web::Json<Person>>, ServerError> {
+    let pooled_conn = pool.get().await.context(DatabasePoolSnafu)?;
     let cloned_id = *id;
     let option = pooled_conn
         .interact(move |conn| {
-            let mut statement = conn
-                .prepare("SELECT id, name FROM person WHERE id = ?1")
-                .unwrap();
-            statement
-                .query_row([cloned_id], |row| {
-                    Ok(Person {
-                        id: row.get(0)?,
-                        name: row.get(1)?,
-                    })
+            conn.prepare("SELECT id, name FROM person WHERE id = ?1")
+                .and_then(|mut statement| {
+                    statement
+                        .query_row([cloned_id], |row| {
+                            Ok(Person {
+                                id: row.get(0)?,
+                                name: row.get(1)?,
+                            })
+                        })
+                        .optional()
                 })
-                .optional()
         })
         .await
-        .unwrap()
-        .unwrap();
-    match option {
-        Some(person) => HttpResponse::Ok().json(person),
-        None => HttpResponse::NotFound().json(Error {
-            message: format!("No Person with ID {}", id),
-        }),
-    }
+        .context(DatabaseInteractSnafu)?
+        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
+    Ok(option.map(web::Json))
 }
 
 mod embedded {
@@ -111,8 +131,9 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
     })?;
     migration_conn
         .interact(|conn| {
-            // it's okay to panic in here because `interact` will catch it?
-            // otherwise, we want to propagate errors through Result
+            // it's okay to panic in here because `interact` will catch it.
+            // otherwise, we want to propagate errors through Result.
+            // additionally, this happens during application startup, so panicking is okay
             embedded::migrations::runner().run(conn).unwrap();
         })
         .await
