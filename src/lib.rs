@@ -1,8 +1,10 @@
 pub mod config;
+mod routes;
 
 use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, ResponseError};
 use config::ApplicationConfiguration;
 use deadpool_sqlite::{rusqlite::OptionalExtension, InteractError, Pool, PoolError};
+use routes::health_check;
 use serde::{Deserialize, Serialize};
 use snafu::{prelude::*, Whatever};
 
@@ -60,11 +62,6 @@ enum InnerError {
     DatabaseConnectionError,
     #[snafu(display("Failed while running interact"))]
     DatabaseInteractError { source: InteractError },
-}
-
-#[get("/health_check")]
-async fn greet() -> HttpResponse {
-    HttpResponse::Ok().body("Application is running and ready to receive requests")
 }
 
 #[post("/people")]
@@ -146,7 +143,7 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
         })?;
     Ok(HttpServer::new(move || {
         App::new()
-            .service(greet)
+            .service(health_check)
             .service(create_person)
             .service(get_person)
             .app_data(web::Data::new(db_pool.clone()))
