@@ -1,9 +1,11 @@
 pub mod config;
+pub mod domain;
 mod routes;
 
-use actix_web::{self, dev::Server, get, post, web, App, HttpResponse, HttpServer, ResponseError};
+use actix_web::{self, dev::Server, get, post, web, App, HttpServer};
 use config::ApplicationConfiguration;
-use deadpool_sqlite::{rusqlite::OptionalExtension, InteractError, Pool, PoolError};
+use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
+use domain::errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError};
 use routes::health_check;
 use serde::{Deserialize, Serialize};
 use snafu::{prelude::*, Whatever};
@@ -40,28 +42,6 @@ impl Person {
     pub fn name(&self) -> &str {
         self.name.as_ref()
     }
-}
-
-#[derive(Debug, Snafu)]
-struct ServerError(InnerError);
-
-impl ResponseError for ServerError {
-    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
-        // TODO: put more information here, such as some sort of Trace ID
-        //       so I can look in the logs using that Trace ID later.
-        HttpResponse::new(self.status_code())
-    }
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug, Snafu)]
-enum InnerError {
-    #[snafu(display("Failed to get a connection from the connection pool"))]
-    DatabasePoolError { source: PoolError },
-    #[snafu(display("Failed while connecting and running queries to the database"))]
-    DatabaseConnectionError,
-    #[snafu(display("Failed while running interact"))]
-    DatabaseInteractError { source: InteractError },
 }
 
 #[post("/people")]
