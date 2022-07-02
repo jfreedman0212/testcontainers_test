@@ -2,7 +2,7 @@ pub mod config;
 pub mod domain;
 mod routes;
 
-use actix_web::{self, dev::Server, web, App, HttpServer};
+use actix_web::{self, dev::Server, middleware::Logger, web, App, HttpServer};
 use config::ApplicationConfiguration;
 use routes::{create_person, get_person, health_check};
 use snafu::{prelude::*, Whatever};
@@ -36,6 +36,7 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
         })?;
     Ok(HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .service(health_check)
             .service(create_person)
             .service(get_person)

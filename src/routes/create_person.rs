@@ -5,13 +5,27 @@ use crate::domain::{
 use actix_web::{self, post, web};
 use deadpool_sqlite::Pool;
 use snafu::prelude::*;
+use tracing::Instrument;
 
 #[post("/people")]
 pub(crate) async fn create_person(
     person_input: web::Json<PersonInput>,
     pool: web::Data<Pool>,
 ) -> Result<web::Json<Person>, ServerError> {
-    let pooled_conn = pool.get().await.context(DatabasePoolSnafu)?;
+    let request_id = uuid::Uuid::new_v4();
+    let request_span = tracing::info_span!(
+        "Creating a new person",
+        %request_id,
+        person_name = %person_input.name()
+    );
+    let _span_guard = request_span.enter();
+    let pool_conn_span = tracing::trace_span!("Getting a connection from the pool");
+    let pooled_conn = pool
+        .get()
+        .instrument(pool_conn_span)
+        .await
+        .context(DatabasePoolSnafu)?;
+    let db_span = tracing::info_span!("Inserting the person into the database");
     let new_person = pooled_conn
         .interact(move |conn| {
             conn.execute(
@@ -23,6 +37,7 @@ pub(crate) async fn create_person(
                 Person::new(last_id, String::from(person_input.name()))
             })
         })
+        .instrument(db_span)
         .await
         .context(DatabaseInteractSnafu)?
         .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;

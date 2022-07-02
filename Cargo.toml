@@ -25,6 +25,18 @@ refinery = { version = "0.8.4", features = ["rusqlite"] }
 serde = { version = "1.0.137", features = ["derive"] }
 # error handling library
 snafu = "0.7.1"
+# Tracing dependencies that let us set up robust logging
+tracing = { version = "0.1.35", features = ["log"] }
+tracing-subscriber = { version = "0.3.14", features = [
+    "registry",
+    "env-filter",
+] }
+# formats tracing output using the bunyan format (it's JSON)
+tracing-bunyan-formatter = "0.3.3"
+# captures regular Rust `log` statements and maps them to our Tracing setup
+tracing-log = "0.1.3"
+# for generating UUID v4 (currently, used for generating request IDs)
+uuid = { version = "1.1.2", features = ["v4"] }
 
 [dev-dependencies]
 # used for integration tests to hit our web server
