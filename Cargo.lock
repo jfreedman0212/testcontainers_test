@@ -1470,6 +1470,7 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "deadpool-sqlite",
+ "once_cell",
  "refinery",
  "reqwest",
  "serde",

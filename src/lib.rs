@@ -1,5 +1,6 @@
 pub mod config;
 pub mod domain;
+pub mod telemetry;
 mod routes;
 
 use actix_web::{self, dev::Server, middleware::Logger, web, App, HttpServer};
