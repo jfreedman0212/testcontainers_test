@@ -1,12 +1,13 @@
 pub mod config;
 pub mod domain;
-pub mod telemetry;
 mod routes;
+pub mod telemetry;
 
-use actix_web::{self, dev::Server, middleware::Logger, web, App, HttpServer};
+use actix_web::{dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
 use routes::{create_person, get_person, health_check};
 use snafu::{prelude::*, Whatever};
+use tracing_actix_web::TracingLogger;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -15,29 +16,33 @@ mod embedded {
 
 pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whatever> {
     let ApplicationConfiguration { listener, db_pool } = app_config;
-    let migration_conn = db_pool.get().await.with_whatever_context(|error| {
-        format!(
-            "Encountered error getting the migration connection from the pool: {:?}",
-            error
-        )
-    })?;
-    migration_conn
-        .interact(|conn| {
-            // it's okay to panic in here because `interact` will catch it.
-            // otherwise, we want to propagate errors through Result.
-            // additionally, this happens during application startup, so panicking is okay
-            embedded::migrations::runner().run(conn).unwrap();
-        })
-        .await
-        .with_whatever_context(|error| {
+    // This is wrapped in a block because it ensures that the migration_conn gets dropped
+    // before we run the HTTP server. When it gets dropped, it gets relinquished back to the pool
+    {
+        let migration_conn = db_pool.get().await.with_whatever_context(|error| {
             format!(
-                "Encountered error running the database migration: {:?}",
+                "Encountered error getting the migration connection from the pool: {:?}",
                 error
             )
         })?;
+        migration_conn
+            .interact(|conn| {
+                // it's okay to panic in here because `interact` will catch it.
+                // otherwise, we want to propagate errors through Result.
+                // additionally, this happens during application startup, so panicking is okay
+                embedded::migrations::runner().run(conn).unwrap();
+            })
+            .await
+            .with_whatever_context(|error| {
+                format!(
+                    "Encountered error running the database migration: {:?}",
+                    error
+                )
+            })
+    }?;
     Ok(HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
             .service(health_check)
             .service(create_person)
             .service(get_person)
