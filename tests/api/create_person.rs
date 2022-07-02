@@ -1,6 +1,6 @@
 use crate::helpers::{spawn_test_app, TestApp};
 use reqwest::Client;
-use testcontainers_test::{domain::Person, PersonInput};
+use testcontainers_test::domain::{Person, PersonInput};
 use tokio;
 
 #[tokio::test]

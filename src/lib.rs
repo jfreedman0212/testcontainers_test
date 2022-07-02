@@ -2,47 +2,10 @@ pub mod config;
 pub mod domain;
 mod routes;
 
-use actix_web::{self, dev::Server, post, web, App, HttpServer};
+use actix_web::{self, dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
-use deadpool_sqlite::Pool;
-use domain::{
-    errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError},
-    Person,
-};
-use routes::{get_person, health_check};
-use serde::{Deserialize, Serialize};
+use routes::{create_person, get_person, health_check};
 use snafu::{prelude::*, Whatever};
-
-#[derive(Deserialize, Serialize)]
-pub struct PersonInput {
-    name: String,
-}
-
-impl PersonInput {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into() }
-    }
-}
-
-#[post("/people")]
-async fn create_person(
-    person: web::Json<PersonInput>,
-    pool: web::Data<Pool>,
-) -> Result<web::Json<Person>, ServerError> {
-    let pooled_conn = pool.get().await.context(DatabasePoolSnafu)?;
-    let new_person = pooled_conn
-        .interact(move |conn| {
-            conn.execute("INSERT INTO person (name) VALUES (?1)", [&person.name])
-                .map(|_| {
-                    let last_id = conn.last_insert_rowid();
-                    Person::new(last_id, person.name.clone())
-                })
-        })
-        .await
-        .context(DatabaseInteractSnafu)?
-        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
-    Ok(web::Json(new_person))
-}
 
 mod embedded {
     use refinery::embed_migrations;

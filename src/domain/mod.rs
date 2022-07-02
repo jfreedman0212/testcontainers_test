@@ -1,5 +1,4 @@
 pub mod errors;
 mod person;
 
-pub use person::Person;
-
+pub use person::*;
