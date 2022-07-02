@@ -11,12 +11,21 @@ path = "src/main.rs"
 name = "testcontainers_test"
 
 [dependencies]
+# Provides us with an HTTP server to... serve HTTP requests
 actix-web = "4.1.0"
+# async runtime used by actix
 tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+# async database connection pooling implementation for SQLite.
+# provides a bundled version of rusqlite within
 deadpool-sqlite = "0.3.1"
+# database migration tool that lets us define our database
+# by a series of scripts to be run in a specific order
 refinery = { version = "0.8.4", features = ["rusqlite"] }
+# provides serialization/deserialization to JSON via Actix Web
 serde = { version = "1.0.137", features = ["derive"] }
+# error handling library
 snafu = "0.7.1"
 
 [dev-dependencies]
+# used for integration tests to hit our web server
 reqwest = { version = "0.11.11", features = ["json"] }
