@@ -2,11 +2,14 @@ pub mod config;
 pub mod domain;
 mod routes;
 
-use actix_web::{self, dev::Server, get, post, web, App, HttpServer};
+use actix_web::{self, dev::Server, post, web, App, HttpServer};
 use config::ApplicationConfiguration;
-use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
-use domain::errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError};
-use routes::health_check;
+use deadpool_sqlite::Pool;
+use domain::{
+    errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError},
+    Person,
+};
+use routes::{get_person, health_check};
 use serde::{Deserialize, Serialize};
 use snafu::{prelude::*, Whatever};
 
@@ -21,29 +24,6 @@ impl PersonInput {
     }
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Eq, Debug)]
-pub struct Person {
-    id: i64,
-    name: String,
-}
-
-impl Person {
-    pub fn new(id: i64, name: impl Into<String>) -> Self {
-        Self {
-            id,
-            name: name.into(),
-        }
-    }
-
-    pub fn id(&self) -> i64 {
-        self.id
-    }
-
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
-    }
-}
-
 #[post("/people")]
 async fn create_person(
     person: web::Json<PersonInput>,
@@ -55,43 +35,13 @@ async fn create_person(
             conn.execute("INSERT INTO person (name) VALUES (?1)", [&person.name])
                 .map(|_| {
                     let last_id = conn.last_insert_rowid();
-                    Person {
-                        id: last_id,
-                        name: person.name.clone(),
-                    }
+                    Person::new(last_id, person.name.clone())
                 })
         })
         .await
         .context(DatabaseInteractSnafu)?
         .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
     Ok(web::Json(new_person))
-}
-
-#[get("/people/{id}")]
-async fn get_person(
-    id: web::Path<i64>,
-    pool: web::Data<Pool>,
-) -> Result<Option<web::Json<Person>>, ServerError> {
-    let pooled_conn = pool.get().await.context(DatabasePoolSnafu)?;
-    let cloned_id = *id;
-    let option = pooled_conn
-        .interact(move |conn| {
-            conn.prepare("SELECT id, name FROM person WHERE id = ?1")
-                .and_then(|mut statement| {
-                    statement
-                        .query_row([cloned_id], |row| {
-                            Ok(Person {
-                                id: row.get(0)?,
-                                name: row.get(1)?,
-                            })
-                        })
-                        .optional()
-                })
-        })
-        .await
-        .context(DatabaseInteractSnafu)?
-        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
-    Ok(option.map(web::Json))
 }
 
 mod embedded {
