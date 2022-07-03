@@ -1,6 +1,9 @@
 use deadpool_sqlite::{Config, Runtime};
 use once_cell::sync::Lazy;
-use std::net::{SocketAddr, TcpListener};
+use std::{
+    env, io,
+    net::{SocketAddr, TcpListener},
+};
 use testcontainers_test::{
     config::ApplicationConfiguration,
     run,
@@ -8,8 +11,18 @@ use testcontainers_test::{
 };
 
 static TRACING: Lazy<()> = Lazy::new(|| {
-    let subscriber = get_subscriber("app", "info", std::io::sink);
-    init_subscriber(subscriber).unwrap();
+    let name = "app";
+    let env_filter = "info";
+    match env::var("SHOW_LOGS") {
+        Ok(val) if val == "1" => {
+            let subscriber = get_subscriber(name, env_filter, io::stdout);
+            init_subscriber(subscriber).unwrap();
+        }
+        _ => {
+            let subscriber = get_subscriber(name, env_filter, io::sink);
+            init_subscriber(subscriber).unwrap();
+        }
+    };
 });
 
 pub struct TestApp {
