@@ -1,15 +1,17 @@
-use crate::helpers::{spawn_test_app, TestApp};
+use crate::helpers::spawn_test_app;
 use reqwest::Client;
+use testcontainers::clients::Cli;
 use testcontainers_test::domain::{Person, PersonInput};
 use tokio;
 
 #[tokio::test]
 async fn create_person() {
-    let TestApp { address } = spawn_test_app().await;
+    let docker = Cli::default();
+    let test_app = spawn_test_app(&docker);
     let person_input = PersonInput::new("Josh");
     let client = Client::new();
     let post_response = client
-        .post(format!("http://{}/people", address))
+        .post(format!("http://{}/people", test_app.address))
         .json(&person_input)
         .send()
         .await
@@ -31,7 +33,7 @@ async fn create_person() {
     let get_response = client
         .get(format!(
             "http://{}/people/{}",
-            address,
+            test_app.address,
             newly_created_person.id()
         ))
         .send()
@@ -55,10 +57,11 @@ async fn create_person() {
 /// This test mostly exists to assert that each connection
 #[tokio::test]
 async fn get_person_expect_empty() {
-    let TestApp { address } = spawn_test_app().await;
+    let docker = Cli::default();
+    let test_app = spawn_test_app(&docker);
     let client = Client::new();
     let get_response = client
-        .get(format!("http://{}/people/1", address))
+        .get(format!("http://{}/people/1", test_app.address))
         .send()
         .await
         .unwrap();
