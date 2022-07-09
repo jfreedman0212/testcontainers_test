@@ -1,6 +1,4 @@
-pub mod errors;
-mod person;
+pub(crate) mod errors;
 mod user;
 
-pub use person::*;
 pub use user::*;

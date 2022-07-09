@@ -5,7 +5,7 @@ pub mod telemetry;
 
 use actix_web::{dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
-use routes::{create_person, get_person, health_check, login, sign_up};
+use routes::{health_check, login, sign_up};
 use snafu::{prelude::*, Whatever};
 use tracing_actix_web::TracingLogger;
 
@@ -46,8 +46,6 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
         App::new()
             .wrap(TracingLogger::default())
             .service(health_check)
-            .service(create_person)
-            .service(get_person)
             .service(sign_up)
             .service(login)
             .app_data(web::Data::new(db_pool.clone()))
