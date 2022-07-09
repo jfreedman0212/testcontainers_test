@@ -26,21 +26,22 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
             )
         })?;
         migration_conn
-            .interact(|conn| {
-                conn.pragma_update(None, "journal_mode", &"wal").unwrap();
-                // it's okay to panic in here because `interact` will catch it.
-                // otherwise, we want to propagate errors through Result.
-                // additionally, this happens during application startup, so panicking is okay
-                embedded::migrations::runner().run(conn).unwrap();
+            .interact(|conn| -> Result<(), String> {
+                conn.pragma_update(None, "journal_mode", &"wal")
+                    .map_err(|e| {
+                        format!("Failed to set pragma journal_mode=WAL because: {:?}", e)
+                    })?;
+                embedded::migrations::runner()
+                    .run(conn)
+                    .map_err(|e| format!("Failed to run database migrations because: {:?}", e))?;
+                Ok(())
             })
             .await
             .with_whatever_context(|error| {
-                format!(
-                    "Encountered error running the database migration: {:?}",
-                    error
-                )
-            })
-    }?;
+                format!("Encountered error when running `interact`: {:?}", error)
+            })?
+    }
+    .with_whatever_context(|e| format!("Inner error: {}", e))?;
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
