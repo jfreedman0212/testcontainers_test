@@ -27,6 +27,7 @@ pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whateve
         })?;
         migration_conn
             .interact(|conn| {
+                conn.pragma_update(None, "journal_mode", &"wal").unwrap();
                 // it's okay to panic in here because `interact` will catch it.
                 // otherwise, we want to propagate errors through Result.
                 // additionally, this happens during application startup, so panicking is okay

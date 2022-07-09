@@ -1,9 +1,9 @@
 use crate::domain::{
-    errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError},
+    errors::{DatabaseConnectionSnafu, DatabaseInteractSnafu, DatabasePoolSnafu, ServerError},
     Person, PersonInput,
 };
 use actix_web::{post, web};
-use deadpool_sqlite::Pool;
+use deadpool_sqlite::{rusqlite::named_params, Pool};
 use snafu::prelude::*;
 use tracing::Instrument;
 
@@ -26,18 +26,18 @@ pub(crate) async fn create_person(
     let db_span = tracing::info_span!("Inserting the person into the database");
     let new_person = pooled_conn
         .interact(move |conn| {
-            conn.execute(
-                "INSERT INTO person (name) VALUES (?1)",
-                [person_input.name()],
-            )
-            .map(|_| {
-                let last_id = conn.last_insert_rowid();
-                Person::new(last_id, String::from(person_input.name()))
-            })
+            conn.prepare_cached("INSERT INTO person (name) VALUES (:name)")
+                .map(|mut statement| {
+                    statement.execute(named_params! { ":name": person_input.name() })
+                })?
+                .map(|_| {
+                    let last_id = conn.last_insert_rowid();
+                    Person::new(last_id, String::from(person_input.name()))
+                })
         })
         .instrument(db_span)
         .await
         .context(DatabaseInteractSnafu)?
-        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
+        .context(DatabaseConnectionSnafu)?;
     Ok(web::Json(new_person))
 }

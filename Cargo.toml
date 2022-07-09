@@ -24,7 +24,7 @@ refinery = { version = "0.8.4", features = ["rusqlite"] }
 # provides serialization/deserialization to JSON via Actix Web
 serde = { version = "1.0.137", features = ["derive"] }
 # error handling library
-snafu = "0.7.1"
+snafu = { version = "0.7.1", features = ["backtraces"] }
 # Tracing dependencies that let us set up robust logging
 tracing = { version = "0.1.35", features = ["log"] }
 tracing-subscriber = { version = "0.3.14", features = [

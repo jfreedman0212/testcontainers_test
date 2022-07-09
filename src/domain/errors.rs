@@ -1,6 +1,6 @@
 use actix_web::{self, HttpResponse, ResponseError};
-use deadpool_sqlite::{InteractError, PoolError};
-use snafu::prelude::*;
+use deadpool_sqlite::{rusqlite, InteractError, PoolError};
+use snafu::{prelude::*, Backtrace};
 
 #[derive(Debug, Snafu)]
 pub(crate) struct ServerError(pub(crate) InnerError);
@@ -18,9 +18,18 @@ impl ResponseError for ServerError {
 #[snafu(visibility(pub(crate)))]
 pub(crate) enum InnerError {
     #[snafu(display("Failed to get a connection from the connection pool"))]
-    DatabasePoolError { source: PoolError },
-    #[snafu(display("Failed while connecting and running queries to the database"))]
-    DatabaseConnectionError,
+    DatabasePoolError {
+        source: PoolError,
+        backtrace: Backtrace,
+    },
+    #[snafu(display("Failed while connecting to/running queries on the database"))]
+    DatabaseConnectionError {
+        source: rusqlite::Error,
+        backtrace: Backtrace,
+    },
     #[snafu(display("Failed while running interact"))]
-    DatabaseInteractError { source: InteractError },
+    DatabaseInteractError {
+        source: InteractError,
+        backtrace: Backtrace,
+    },
 }

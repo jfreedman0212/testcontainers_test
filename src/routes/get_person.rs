@@ -1,9 +1,12 @@
 use crate::domain::{
-    errors::{DatabaseInteractSnafu, DatabasePoolSnafu, InnerError, ServerError},
+    errors::{DatabaseInteractSnafu, DatabasePoolSnafu, DatabaseConnectionSnafu, ServerError},
     Person,
 };
 use actix_web::{get, web};
-use deadpool_sqlite::{rusqlite::OptionalExtension, Pool};
+use deadpool_sqlite::{
+    rusqlite::{named_params, OptionalExtension},
+    Pool,
+};
 use snafu::prelude::*;
 use tracing::Instrument;
 
@@ -23,16 +26,18 @@ pub(crate) async fn get_person(
     let db_span = tracing::info_span!("Retrieving the person from the database");
     let option = pooled_conn
         .interact(move |conn| {
-            conn.prepare("SELECT id, name FROM person WHERE id = ?1")
+            conn.prepare_cached("SELECT id, name FROM person WHERE id = :id")
                 .and_then(|mut statement| {
                     statement
-                        .query_row([cloned_id], |row| Ok(Person::new(row.get(0)?, row.get(1)?)))
+                        .query_row(named_params! { ":id": cloned_id }, |row| {
+                            Ok(Person::new(row.get(0)?, row.get(1)?))
+                        })
                         .optional()
                 })
         })
         .instrument(db_span)
         .await
         .context(DatabaseInteractSnafu)?
-        .map_err(|_| ServerError(InnerError::DatabaseConnectionError))?;
+        .context(DatabaseConnectionSnafu)?;
     Ok(option.map(web::Json))
 }
