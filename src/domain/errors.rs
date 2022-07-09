@@ -1,6 +1,8 @@
 use actix_web::{self, HttpResponse, ResponseError};
+use argon2::password_hash;
 use deadpool_sqlite::{rusqlite, InteractError, PoolError};
 use snafu::{prelude::*, Backtrace};
+use tokio::task::JoinError;
 
 #[derive(Debug, Snafu)]
 pub(crate) struct ServerError(pub(crate) InnerError);
@@ -32,4 +34,13 @@ pub(crate) enum InnerError {
         source: InteractError,
         backtrace: Backtrace,
     },
+    PasswordHashingError {
+        error_source: password_hash::errors::Error,
+    },
+    #[snafu(display("Failed to join a thread/task with the current one"))]
+    JoinError {
+        source: JoinError,
+        backtrace: Backtrace,
+    },
+    InvalidUsernameOrPassword
 }
