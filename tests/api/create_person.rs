@@ -52,7 +52,8 @@ async fn create_person() {
     assert_eq!(newly_created_person, retrieved_person);
 }
 
-/// This test mostly exists to assert that each connection
+/// This test exists to assert that each test has its own database created for it.
+/// This way, we know that there is no interference between them.
 #[tokio::test]
 async fn get_person_expect_empty() {
     let TestApp { address } = spawn_test_app().await;
