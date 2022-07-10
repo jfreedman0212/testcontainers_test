@@ -11,8 +11,8 @@ async fn create_user_success() {
     let password = String::from("freedman");
     // First, create a user
     let create_user_response = client
-        .post(format!("http://{}/users", address))
-        .json(&UserInput::new(
+        .post(format!("http://{}/signup", address))
+        .form(&UserInput::new(
             username.clone(),
             password.clone(),
             password.clone(),
@@ -28,8 +28,8 @@ async fn create_user_success() {
     );
     // Then, validate that the user exists by logging in
     let login_response = client
-        .post(format!("http://{}/login", address))
-        .json(&Login::new(username.clone(), password.clone()))
+        .post(format!("http://{}/", address))
+        .form(&Login::new(username.clone(), password.clone()))
         .send()
         .await
         .unwrap();

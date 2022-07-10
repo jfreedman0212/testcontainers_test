@@ -10,6 +10,10 @@ path = "./src/lib.rs"
 path = "src/main.rs"
 name = "testcontainers_test"
 
+# Try to keep all dependencies locked down to _even_ the patch version.
+# This might be overkill, but it ensures that all builds on all machines
+# are using the _exact same_ version of all dependencies.
+
 [dependencies]
 # Provides us with an HTTP server to... serve HTTP requests
 actix-web = "4.1.0"
@@ -39,6 +43,10 @@ tracing-log = "0.1.3"
 tracing-actix-web = "0.6.0"
 # for password hashing
 argon2 = "0.4.1"
+# for HTML templating
+handlebars = "4.3.1"
+# for serving non-templated files (just static ones)
+actix-files = "0.6.1"
 
 [dev-dependencies]
 # used for integration tests to hit our web server

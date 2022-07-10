@@ -1,6 +1,6 @@
 pub mod config;
-pub mod domain;
 mod db_handle;
+pub mod domain;
 mod routes;
 pub mod telemetry;
 
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use actix_web::{dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
 use db_handle::DbHandle;
-use routes::{health_check, login, sign_up};
+use routes::{health_check, login, login_page, sign_up, sign_up_page};
 use snafu::{prelude::*, Whatever};
 use tracing_actix_web::TracingLogger;
 
@@ -29,6 +29,8 @@ pub async fn run<Path: Into<PathBuf>>(
             .service(health_check)
             .service(sign_up)
             .service(login)
+            .service(login_page)
+            .service(sign_up_page)
             .app_data(web::Data::new(db_handle.clone()))
     })
     .listen(listener)

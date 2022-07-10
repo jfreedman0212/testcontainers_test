@@ -1,14 +1,20 @@
 use crate::{
-    domain::{errors::*, Login, User},
     db_handle::DbHandle,
+    domain::{errors::*, Login, User},
 };
-use actix_web::{post, web};
+use actix_files::NamedFile;
+use actix_web::{get, post, web, Responder};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use snafu::ResultExt;
 
-#[post("/login")]
+#[get("/")]
+pub(crate) async fn login_page() -> impl Responder {
+    NamedFile::open_async("./static/index.html").await
+}
+
+#[post("/")]
 pub(crate) async fn login(
-    input: web::Json<Login>,
+    input: web::Form<Login>,
     db_handle: web::Data<DbHandle>,
 ) -> Result<web::Json<User>, ServerError> {
     let username = input.username().to_string();

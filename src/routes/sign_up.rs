@@ -1,18 +1,24 @@
 use crate::{
-    domain::{errors::*, User, UserInput},
     db_handle::{DbHandle, ExecuteResult},
+    domain::{errors::*, User, UserInput},
 };
-use actix_web::{post, web};
+use actix_files::NamedFile;
+use actix_web::{get, post, web, Responder};
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHasher,
 };
 use snafu::ResultExt;
 
+#[get("/signup")]
+pub(crate) async fn sign_up_page() -> impl Responder {
+    NamedFile::open_async("./static/signup.html").await
+}
+
 #[tracing::instrument(name = "Creating a user", skip(input, db_handle), fields(username = %input.username()))]
-#[post("/users")]
+#[post("/signup")]
 pub(crate) async fn sign_up(
-    input: web::Json<UserInput>,
+    input: web::Form<UserInput>,
     db_handle: web::Data<DbHandle>,
 ) -> Result<web::Json<User>, ServerError> {
     let password_hash = hash_and_salt_password(input.password().into()).await?;
