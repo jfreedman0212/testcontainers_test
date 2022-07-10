@@ -4,6 +4,8 @@ mod helpers;
 mod routes;
 pub mod telemetry;
 
+use std::path::PathBuf;
+
 use actix_web::{dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
 use helpers::DbHandle;
@@ -16,16 +18,17 @@ mod embedded {
     embed_migrations!("./migrations");
 }
 
-pub async fn run(app_config: ApplicationConfiguration) -> Result<Server, Whatever> {
-    let ApplicationConfiguration { listener, db_pool } = app_config;
-    let db_handle = DbHandle::from_pool(db_pool.clone()).await?;
+pub async fn run<Path: Into<PathBuf>>(
+    app_config: ApplicationConfiguration<Path>,
+) -> Result<Server, Whatever> {
+    let ApplicationConfiguration { listener, db_path } = app_config;
+    let db_handle = DbHandle::from_path(db_path).await?;
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
             .service(health_check)
             .service(sign_up)
             .service(login)
-            .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(db_handle.clone()))
     })
     .listen(listener)

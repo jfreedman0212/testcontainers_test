@@ -1,7 +1,6 @@
-use deadpool_sqlite::Pool;
-use std::net::TcpListener;
+use std::{net::TcpListener, path::PathBuf};
 
-pub struct ApplicationConfiguration {
+pub struct ApplicationConfiguration<Path: Into<PathBuf>> {
     pub listener: TcpListener,
-    pub db_pool: Pool,
+    pub db_path: Path,
 }

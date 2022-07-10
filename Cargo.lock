@@ -1582,7 +1582,6 @@ dependencies = [
  "argon2",
  "deadpool-sqlite",
  "once_cell",
- "rand_core",
  "refinery",
  "reqwest",
  "serde",
