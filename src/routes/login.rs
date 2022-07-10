@@ -1,4 +1,7 @@
-use crate::domain::{errors::*, Login, User};
+use crate::{
+    domain::{errors::*, Login, User},
+    helpers::get_connection_from_pool,
+};
 use actix_web::{post, web};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use deadpool_sqlite::{
@@ -13,12 +16,7 @@ pub(crate) async fn login(
     input: web::Json<Login>,
     pool: web::Data<Pool>,
 ) -> Result<web::Json<User>, ServerError> {
-    let pool_conn_span = tracing::trace_span!("Getting a connection from the pool");
-    let pooled_conn = pool
-        .get()
-        .instrument(pool_conn_span)
-        .await
-        .context(DatabasePoolSnafu)?;
+    let pooled_conn = get_connection_from_pool(&pool).await?;
     let db_span = tracing::info_span!("Retrieving the user from the database");
     let username: String = input.username().into();
     let (user, _) = pooled_conn

@@ -1,4 +1,7 @@
-use crate::domain::{errors::*, User, UserInput};
+use crate::{
+    domain::{errors::*, User, UserInput},
+    helpers::get_connection_from_pool,
+};
 use actix_web::{post, web};
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
@@ -14,12 +17,7 @@ pub(crate) async fn sign_up(
     input: web::Json<UserInput>,
     pool: web::Data<Pool>,
 ) -> Result<web::Json<User>, ServerError> {
-    let pool_conn_span = tracing::trace_span!("Getting a connection from the pool");
-    let pooled_conn = pool
-        .get()
-        .instrument(pool_conn_span)
-        .await
-        .context(DatabasePoolSnafu)?;
+    let pooled_conn = get_connection_from_pool(&pool).await?;
     let password_hash = hash_and_salt_password(input.password().into()).await?;
     let db_span = tracing::info_span!("Inserting the new person into the database");
     let new_user = pooled_conn
