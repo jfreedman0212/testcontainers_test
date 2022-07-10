@@ -1,6 +1,6 @@
 pub mod config;
 pub mod domain;
-mod helpers;
+mod db_handle;
 mod routes;
 pub mod telemetry;
 
@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use actix_web::{dev::Server, web, App, HttpServer};
 use config::ApplicationConfiguration;
-use helpers::DbHandle;
+use db_handle::DbHandle;
 use routes::{health_check, login, sign_up};
 use snafu::{prelude::*, Whatever};
 use tracing_actix_web::TracingLogger;

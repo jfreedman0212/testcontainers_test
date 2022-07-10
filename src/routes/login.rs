@@ -1,6 +1,6 @@
 use crate::{
     domain::{errors::*, Login, User},
-    helpers::DbHandle,
+    db_handle::DbHandle,
 };
 use actix_web::{post, web};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};

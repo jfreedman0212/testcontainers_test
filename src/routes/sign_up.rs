@@ -1,6 +1,6 @@
 use crate::{
     domain::{errors::*, User, UserInput},
-    helpers::{DbHandle, ExecuteResult},
+    db_handle::{DbHandle, ExecuteResult},
 };
 use actix_web::{post, web};
 use argon2::{
