@@ -3,20 +3,36 @@ use crate::{
     domain::{errors::*, Login, User},
 };
 use actix_files::NamedFile;
-use actix_web::{get, post, web, Responder};
+use actix_web::{get, http::header::ContentType, post, web, HttpResponse, Responder};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use handlebars::Handlebars;
+use serde::Serialize;
 use snafu::ResultExt;
 
 #[get("/")]
-pub(crate) async fn login_page() -> impl Responder {
-    NamedFile::open_async("./static/index.html").await
+#[tracing::instrument(name = "Navigating to the login page", skip(hb))]
+pub(crate) async fn login_page(
+    hb: web::Data<Handlebars<'static>>,
+) -> Result<HttpResponse, ServerError> {
+    let html =
+        tokio::task::spawn_blocking(move || hb.render("index", &LoginModel { message: None }))
+            .await
+            .context(JoinSnafu)?
+            .context(TemplateRenderingSnafu {
+                template_name: String::from("index"),
+            })?;
+    Ok(HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(html))
 }
 
 #[post("/")]
+#[tracing::instrument(name = "Logging In", skip(input, db_handle), fields(username = %input.username()))]
 pub(crate) async fn login(
     input: web::Form<Login>,
     db_handle: web::Data<DbHandle>,
-) -> Result<web::Json<User>, ServerError> {
+    hb: web::Data<Handlebars<'static>>,
+) -> Result<HttpResponse, ServerError> {
     let username = input.username().to_string();
     let user_option = db_handle
         .query_row(
@@ -44,11 +60,53 @@ pub(crate) async fn login(
             .await
             .context(JoinSnafu)?;
             if matches {
-                Ok(web::Json(user))
+                Ok(HttpResponse::Ok().json(user))
             } else {
-                Err(ServerError(InnerError::InvalidUsernameOrPassword))
+                let html = tokio::task::spawn_blocking(move || {
+                    hb.render(
+                        "index",
+                        &LoginModel {
+                            message: Some(MessageToClient::InvalidUsernameOrPassword),
+                        },
+                    )
+                })
+                .await
+                .context(JoinSnafu)?
+                .context(TemplateRenderingSnafu {
+                    template_name: String::from("index"),
+                })?;
+                Ok(HttpResponse::BadRequest()
+                    .content_type(ContentType::html())
+                    .body(html))
             }
         }
-        None => Err(ServerError(InnerError::InvalidUsernameOrPassword)),
+        None => {
+            let html = tokio::task::spawn_blocking(move || {
+                hb.render(
+                    "index",
+                    &LoginModel {
+                        message: Some(MessageToClient::InvalidUsernameOrPassword),
+                    },
+                )
+            })
+            .await
+            .context(JoinSnafu)?
+            .context(TemplateRenderingSnafu {
+                template_name: String::from("index"),
+            })?;
+            Ok(HttpResponse::BadRequest()
+                .content_type(ContentType::html())
+                .body(html))
+        }
     }
+}
+
+#[derive(Serialize)]
+enum MessageToClient {
+    InvalidUsernameOrPassword,
+}
+
+#[derive(Serialize)]
+struct LoginModel {
+    message: Option<MessageToClient>,
 }

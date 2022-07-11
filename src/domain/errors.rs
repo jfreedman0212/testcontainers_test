@@ -1,6 +1,7 @@
 use actix_web::{self, HttpResponse, ResponseError};
 use argon2::password_hash;
 use deadpool_sqlite::{rusqlite, InteractError, PoolError};
+use handlebars::RenderError;
 use snafu::{prelude::*, Backtrace};
 use tokio::task::JoinError;
 
@@ -42,5 +43,11 @@ pub(crate) enum InnerError {
         source: JoinError,
         backtrace: Backtrace,
     },
-    InvalidUsernameOrPassword
+    #[snafu(display("Failed to render the template {template_name}"))]
+    TemplateRenderingError {
+        source: RenderError,
+        backtrace: Backtrace,
+        template_name: String
+    },
+    InvalidUsernameOrPassword,
 }

@@ -6,6 +6,9 @@
         <link rel="stylesheet" href="https://unpkg.com/tachyons@4/css/tachyons.min.css">
     </head>
     <body>
+        {{#if message}}
+            <p>{{ message }}</p>
+        {{/if}}
         <form method="POST">
             <label>
                 Username:<br />

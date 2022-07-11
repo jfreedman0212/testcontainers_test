@@ -11,6 +11,7 @@ use argon2::{
 use snafu::ResultExt;
 
 #[get("/signup")]
+#[tracing::instrument(name = "Navigating to the sign up page")]
 pub(crate) async fn sign_up_page() -> impl Responder {
     NamedFile::open_async("./static/signup.html").await
 }
