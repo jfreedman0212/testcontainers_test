@@ -2,8 +2,7 @@ use crate::{
     db_handle::DbHandle,
     domain::{errors::*, Login, User},
 };
-use actix_files::NamedFile;
-use actix_web::{get, http::header::ContentType, post, web, HttpResponse, Responder};
+use actix_web::{get, http::header::ContentType, post, web, HttpResponse};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use handlebars::Handlebars;
 use serde::Serialize;
